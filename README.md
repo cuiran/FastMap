@@ -11,7 +11,6 @@ fine-mapping and it doesn't need in-sample LD file transfers.
 - `scripts/production/` — sample scripts that read per-cohort SuSiE output and real-data summary
   statistics into the `region_df` / `pips_df` inputs `fastmap.fastmap.combine_region`
   expects, and run FastMap at a given setting (`run_fastmap.py`, `fastmap_sources.py`).
-- `wdl/`— left from earlier versions of FastMap.
 
 ## Installation
 
