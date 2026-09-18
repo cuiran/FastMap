@@ -1,55 +1,50 @@
-# FastMap (Beta)
+# FastMap
 
-**FastMap (Beta)** is a beta implementation of a fast, federated multi-biobank fine-mapping method.  
-It takes SuSiE outputs from separate cohorts (ideally fine-mapped with in-sample LD), and combining them to approximate joint Posterior Inclusion Probabilities (PIPs).
-FastMap (Beta) works in single-causal-variant setting, as well as multi-causal-variant setting.
+FastMap combines per-cohort SuSiE fine-mapping results across cohorts into a single set of
+posterior inclusion probabilities (PIPs) per variant, without joint modeling. It greedily
+merges single-effect components across cohorts that colocalize (by `PP.H4` from
+coloc-susie, or weighted Jaccard), then reports one final PIP per variant from the `L`
+strongest resulting components by evidence.
 
----
+## Repository layout
 
-## Overview
+- `fastmap/` — the current, published algorithm: the core combination logic
+  (`fastmap.py`), the pairwise coloc scoring it calls (`coloc.py`), and the vetted
+  production operating point plus grid/sensitivity settings (`production_settings.py`).
+- `scripts/production/` — drivers that read per-cohort SuSiE output and real-data summary
+  statistics into the `region_df` / `pips_df` inputs `fastmap.fastmap.combine_region`
+  expects, and run FastMap at a given setting (`run_fastmap.py`, `fastmap_sources.py`).
+- `scripts/`, `wdl/` (root-level) — earlier beta scripts and WDL, kept for history; superseded
+  by `fastmap/` and `scripts/production/` above.
 
-The main entry point is the function:
-```python
-fastmap_multi_causal(
-    results_dict,
-    pips_dict,
-    max_thresh=0.1,
-    initial_rev_max_thresh=0.001,
-    max_div=3,
-    pip_thresh=0.5,
-    jaccard_thresh=0,
-    L=10,
-    top_n=100
-)
+## Installation
+
+```
+pip install -r requirements.txt
 ```
 
-## Arguments
+Python 3.10+.
 
-| Argument                 | Type    | Default    | Description                                                     |
-| ------------------------ | ------- | ---------- | --------------------------------------------------------------- |
-| `results_dict`           | `dict`  | *required* | Dictionary of SuSiE alpha values from all cohorts.      |
-| `pips_dict`              | `dict`  | *required* | Dictionary of posterior inclusion probabilities (PIPs).         |
-| `max_thresh`             | `float` | `0.1`      | Maximum threshold for calling signal overlap.                    |
-| `initial_rev_max_thresh` | `float` | `0.001`    | Initial reverse threshold for refining overlapping signals. |
-| `max_div`                | `int`   | `3`        | Maximum denominator to `max_thresh`.       |
-| `pip_thresh`             | `float` | `0.5`      | Minimum PIP threshold for remaining signals.                    |
-| `jaccard_thresh`         | `float` | `0.0`      | Jaccard similarity threshold for merging overlapping signals.   |
-| `L`                      | `int`   | `10`       | Number of causal components to consider.                |
-| `top_n`                  | `int`   | `100`      | Number of top variants to include for checking signal overlap.             |
+## Usage
 
-## Current optimal parameters
+`fastmap.fastmap.combine_region` is the core entry point; see its docstring for the expected
+`region_df` / `pips_df` schema. `scripts/production/run_fastmap.py` is an example driver:
 
-| Parameter Name       | Value |
-|----------------------|-------|
-| `max_div`            | `1`   |
-| `max_threshold`      | `0.0` |
-| `rev_max_threshold`  | `0.001` |
-| `top_n`              | `500` |
-| `jaccard_threshold`  | `0.0` |
-| `pip_threshold`      | `0.1` |
-| `L`                  | `10`  |
-| `susie_l`            | `10`  |
+```
+python scripts/production/run_fastmap.py --help
+```
+
+`scripts/production/fastmap_sources.py` reads inputs from GCS paths under an environment
+variable, `FASTMAP_DATA_ROOT`, pointing at your own bucket with the layout documented in
+that file's comments; it does not include any private data.
 
 ## Status
-In development.
-For questions, suggestions please contact rancui@broadinstitute.org
+
+Method and code accompany the FastMap manuscript. See the manuscript's Code Availability
+section for the version used to generate published results.
+
+## License
+
+MIT (see `LICENSE`).
+
+For questions, contact rancui@broadinstitute.org.
