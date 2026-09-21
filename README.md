@@ -22,15 +22,13 @@ Python 3.10+.
 
 ## Usage
 
-`fastmap.fastmap.combine_region` is the core entry point; see its docstring for the expected
-`region_df` / `pips_df` schema. `scripts/production/run_fastmap.py` is an example driver:
+For a working example of how to run it, use the provided production script:
 
 ```
 python scripts/production/run_fastmap.py --help
 ```
 
-`scripts/production/fastmap_sources.py` default reads inputs from GCS paths under an environment
-variable, `FASTMAP_DATA_ROOT`.
+`scripts/production/fastmap_sources.py` expects your data to be in GCS and will look for paths under the`FASTMAP_DATA_ROOT` environment variable by default.
 
 ## Status
 
