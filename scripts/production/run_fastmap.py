@@ -49,7 +49,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import fastmap_sources as src                                        # noqa: E402
-from fastmap.fastmap import combine_region                           # noqa: E402
+from fastmap.fastmap import combine_region, signal_sets                           # noqa: E402
 from fastmap.production_settings import (                            # noqa: E402
     PRODUCTION, assert_matches_grid, get_setting)
 
@@ -111,7 +111,9 @@ def run_one(regions_iter, setting, out_prefix: str, out_dir: str) -> dict:
     result.reset_index().to_feather(feather)
     runtime = pd.DataFrame(runtime_rows)
     runtime.to_csv(os.path.join(out_dir, f"{out_prefix}.runtime.tsv"), sep="\t", index=False)
-
+    ss = signal_sets(result)
+    ss.to_csv(os.path.join(out_dir, f"{out_prefix}.signal_sets.tsv"), sep="\t", index=False)
+  
     notes = result["note"].astype(str)
     return {
         "output_feather": feather,
@@ -122,6 +124,7 @@ def run_one(regions_iter, setting, out_prefix: str, out_dir: str) -> dict:
         "total_wall_seconds": float(runtime["wall_seconds"].sum()),
         "peak_rss_kb": int(runtime["peak_rss_kb_highwater"].max()),
         "n_backfilled": int(notes.str.startswith("filling_from_").sum()),
+        "n_signal_sets": int(len(ss)),
         "frac_backfilled": float(notes.str.startswith("filling_from_").mean()),
         "prob_fastmap_na": int(result["prob_fastmap"].isna().sum()),
         "lbf_fastmap_reported": (int(result["lbf_fastmap"].notna().sum())
