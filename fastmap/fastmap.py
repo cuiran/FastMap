@@ -491,55 +491,56 @@ def finalize_region(region, all_cols_df, used_keys, pips_df, reverse_colname_map
     return result
 
 def signal_sets(result: pd.DataFrame, multiplier: float = 3.0, max_size: int = 50,
-                  include_dropped: bool = False) -> pd.DataFrame:
-      """Signal Sets of every shipped component (Methods, Signal Sets).
+                include_dropped: bool = False) -> pd.DataFrame:
+    """Signal Sets of every shipped component (Methods, Signal Sets).
 
-      `result` is FastMap's per-variant output (`finalize_region` / `fastmap`), for one region or
-      many: indexed by variant (or with a `variant` column), with `region` and one
-      `comp_{i}_val` / `comp_{i}_name` (and, on lbf-carrying paths, `comp_{i}_f1`) per shipped
-      component.
+    `result` is FastMap's per-variant output (`finalize_region` / `fastmap`), for one region or
+    many: indexed by variant (or with a `variant` column), with `region` and one
+    `comp_{i}_val` / `comp_{i}_name` (and, on lbf-carrying paths, `comp_{i}_f1`) per shipped
+    component.
 
-      The Signal Set of component i in a region is every variant whose component PIP exceeds
-      `multiplier / M`, M being the number of variants in the region (rows of `result` for that
-      region, backfilled variants included). A set with `max_size` or more variants is diffuse and
-      is not reported; with `include_dropped=True` it is returned with `reported=False` and its
-      variant list left empty. A component with no variant above the threshold has no Signal Set.
+    The Signal Set of component i in a region is every variant whose component PIP exceeds
+    `multiplier / M`, M being the number of variants in the region (rows of `result` for that
+    region, backfilled variants included). A set with `max_size` or more variants is diffuse and
+    is not reported; with `include_dropped=True` it is returned with `reported=False` and its
+    variant list left empty. A component with no variant above the threshold has no Signal Set.
 
-      Returns one row per Signal Set: `region`, `component` (comp_i), `name` (its source
-      cohort(s)), `f1` (its evidence score, when present), `size`, `cumulative_pip` (the
-      component's PIP mass inside the set), `reported`, and `variants` (comma-separated, by
-      decreasing PIP).
-      """
-      df = result if "variant" in result.columns else result.rename_axis("variant").reset_index()
-      comps = sorted({c[:-len("_val")] for c in df.columns
-                      if c.startswith("comp_") and c.endswith("_val")},
-                     key=lambda c: int(c.split("_")[1]))
-      rows = []      
-      for region, g in df.groupby("region", sort=False):
-          threshold = multiplier / len(g)
-          for comp in comps:
-              pip = g[f"{comp}_val"]
-              if pip.isna().all():
-                  continue                      # this region shipped fewer components
-              members = g.loc[pip > threshold, ["variant", f"{comp}_val"]].sort_values(
-                  f"{comp}_val", ascending=False)
-              if members.empty:
-                  continue
-              reported = len(members) < max_size
-              if not (reported or include_dropped):
-                  continue
-              rows.append({
-                  "region": region,
-                  "component": comp,
-                  "name": g[f"{comp}_name"].iloc[0] if f"{comp}_name" in g else None,
-                  "f1": g[f"{comp}_f1"].iloc[0] if f"{comp}_f1" in g else np.nan,
-                  "size": len(members),
-                  "cumulative_pip": float(members[f"{comp}_val"].sum()),
-                  "reported": reported,
-                  "variants": ",".join(members["variant"].astype(str)) if reported else "",
-              })  
-      cols = ["region", "component", "name", "f1", "size", "cumulative_pip", "reported", "variants"]
-      return pd.DataFrame(rows, columns=cols)
+    Returns one row per Signal Set: `region`, `component` (comp_i), `name` (its source
+    cohort(s)), `f1` (its evidence score, when present), `size`, `cumulative_pip` (the
+    component's PIP mass inside the set), `reported`, and `variants` (comma-separated, by
+    decreasing PIP).
+    """
+    df = result if "variant" in result.columns else result.rename_axis("variant").reset_index()
+    comps = sorted({c[:-len("_val")] for c in df.columns
+                    if c.startswith("comp_") and c.endswith("_val")},
+                   key=lambda c: int(c.split("_")[1]))
+    rows = []
+    for region, g in df.groupby("region", sort=False):
+        threshold = multiplier / len(g)
+        for comp in comps:
+            pip = g[f"{comp}_val"]
+            if pip.isna().all():
+                continue                      # this region shipped fewer components
+            members = g.loc[pip > threshold, ["variant", f"{comp}_val"]].sort_values(
+                f"{comp}_val", ascending=False)
+            if members.empty:
+                continue
+            reported = len(members) < max_size
+            if not (reported or include_dropped):
+                continue
+            rows.append({
+                "region": region,
+                "component": comp,
+                "name": g[f"{comp}_name"].iloc[0] if f"{comp}_name" in g else None,
+                "f1": g[f"{comp}_f1"].iloc[0] if f"{comp}_f1" in g else np.nan,
+                "size": len(members),
+                "cumulative_pip": float(members[f"{comp}_val"].sum()),
+                "reported": reported,
+                "variants": ",".join(members["variant"].astype(str)) if reported else "",
+            })
+    cols = ["region", "component", "name", "f1", "size", "cumulative_pip", "reported", "variants"]
+    return pd.DataFrame(rows, columns=cols)
+
 
 def fastmap(results_dict: dict, pips_dict: dict, **kwargs) -> pd.DataFrame:
     """Run FastMap across every region in `results_dict`, concatenating the per-region
